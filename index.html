@@ -19,8 +19,8 @@
 // par authBoot() quand la config Supabase est absente. Pour réactiver le
 // compte/abonnement/sync cloud, remets l'URL et la clé d'origine.
 // ============================================================
-window.EPS_SUPABASE_URL = '';
-window.EPS_SUPABASE_ANON_KEY = '';
+window.EPS_SUPABASE_URL = 'https://cwixteytvwzowwlbrbdw.supabase.co';
+window.EPS_SUPABASE_ANON_KEY = 'sb_publishable_2Pq0ytk41IxSdX9D1Lk4AA_G3weGkNG';
 </script>
 <style>
 :root{
@@ -2057,46 +2057,12 @@ async function authBoot(){
   }
   epsUser = session.user;
 
-  // Le profil est créé exclusivement par le trigger serveur (voir supabase_setup.sql),
-  // jamais par le client. On tente quelques relectures au cas où le trigger n'aurait
-  // pas encore terminé (rare, sub-seconde), sans jamais écrire nous-mêmes sur "profiles".
-  let profile = null, tries = 0;
-  while(!profile && tries < 5){
-    const { data } = await supa.from('profiles').select('*').eq('id', epsUser.id).single();
-    if(data){ profile = data; break; }
-    tries++; await new Promise(r=>setTimeout(r,400));
-  }
-  if(!profile){
-    authSetLoading(false);
-    authMsg('Erreur d\'initialisation du compte. Réessaie dans quelques secondes.', true);
-    document.getElementById('auth-gate').style.display='flex';
-    authShowLogin();
-    return;
-  }
-  epsProfile = profile;
-
-  // Contrôle anti-partage de compte : vérifie/enregistre cet appareil via une
-  // fonction serveur (RPC), qui refuse au-delà de MAX_DEVICES_PER_ACCOUNT appareils
-  // distincts pour un même compte.
-  const deviceId = await getDeviceId();
-  const { data:deviceCheck, error:deviceErr } = await supa.rpc('check_and_register_device', { p_device_id: deviceId });
-  if(!deviceErr && deviceCheck && deviceCheck.allowed === false){
-    authSetLoading(false);
-    document.getElementById('auth-gate').style.display='flex';
-    authShowDeviceLimit();
-    return;
-  }
-
-  const access = authComputeAccess(profile);
+  // MODE PERSO SIMPLE (sans paywall/abonnement/limite d'appareils) :
+  // pas de table "profiles", pas de trigger serveur, pas de RPC anti-partage.
+  // epsProfile reste volontairement à null : le reste du code (canCreateNewClass,
+  // authUpdateFreeBanner) traite déjà "pas de profil" comme "mode local illimité".
   authSetLoading(false);
-  if(!access.allowed){
-    document.getElementById('auth-gate').style.display='flex';
-    authShowExpired(access.blocked);
-    return;
-  }
-  // Accès autorisé → on masque le portail, on affiche l'app, on lance le chargement des données
   document.getElementById('auth-gate').style.display='none';
-  authUpdateFreeBanner();
   cloudSyncPullThenBoot();
 }
 
