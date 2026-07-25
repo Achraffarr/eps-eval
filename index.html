@@ -3381,12 +3381,19 @@ function cloudPushDebounced(){
   _cloudPushTimer = setTimeout(async ()=>{
     const supa = getSupa(); if(!supa || !epsUser) return;
     try{
-      await supa.from('user_data').upsert({
+      const { error } = await supa.from('user_data').upsert({
         user_id: epsUser.id,
         data: DB,
         updated_at: new Date().toISOString()
       });
-    }catch(e){ /* échec silencieux : la sauvegarde locale reste la source fiable */ }
+      if(error){
+        console.error('Erreur sync cloud (push):', error);
+        toast('⚠️ Sync cloud échouée : '+(error.message||error.code||'erreur inconnue'));
+      }
+    }catch(e){
+      console.error('Erreur sync cloud (push, exception):', e);
+      toast('⚠️ Sync cloud échouée (exception) : '+(e && e.message ? e.message : String(e)));
+    }
   }, 1200);
 }
 
