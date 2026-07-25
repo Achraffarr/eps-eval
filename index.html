@@ -3406,6 +3406,16 @@ async function cloudPushAttempt(retryCount){
 // Dès que la connexion revient (après une coupure), on retente immédiatement
 // de pousser les dernières modifications vers le cloud.
 window.addEventListener('online', ()=>{ if(epsUser) cloudPushAttempt(0); });
+// Synchro automatique renforcée : en plus du push après chaque modification,
+// on repousse/re-tire aussi quand l'appli redevient active (ex: on rouvre
+// l'onglet après être allé sur une autre appli), et périodiquement en tâche
+// de fond tant que l'appli reste ouverte — pour rattraper toute modification
+// qui n'aurait pas pu partir (réseau coupé au moment de la sauvegarde, etc.).
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState==='visible' && epsUser){ cloudPushAttempt(0); }
+});
+window.addEventListener('focus', ()=>{ if(epsUser) cloudPushAttempt(0); });
+setInterval(()=>{ if(epsUser && document.visibilityState==='visible') cloudPushAttempt(0); }, 60000);
 
 function loadDB(){
   const main = tryParseDB(localStorage.getItem('epsdb5'));
