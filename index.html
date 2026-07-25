@@ -393,7 +393,7 @@ tr.grp-bg-Garcons>.frz{background:#eff6ff}
   margin:0 auto;
 }
 .comp-code-btn:hover{transform:scale(1.15);z-index:1;position:relative}
-.comp-seance-nav{display:none}
+.comp-seance-nav{display:flex;align-items:center;justify-content:center;gap:14px;margin:10px 14px;padding:8px;background:var(--gray1);border-radius:10px;flex-wrap:wrap}
 .auto-tool-panel{display:flex;align-items:center;gap:12px;margin:10px 14px;padding:12px 14px;
   background:linear-gradient(135deg,var(--g1),#fff);border:1px solid var(--g3);border-radius:12px}
 .auto-tool-step{flex:0 0 auto;width:26px;height:26px;border-radius:50%;background:var(--g5);color:#fff;
@@ -405,16 +405,13 @@ tr.grp-bg-Garcons>.frz{background:#eff6ff}
 .auto-tool-btn{flex:0 0 auto;white-space:nowrap}
 @media (max-width:640px){.auto-tool-panel{flex-wrap:wrap}.auto-tool-btn{width:100%}}
 @media(max-width:720px){
-  .comp-seance-nav{display:flex;align-items:center;justify-content:center;gap:14px;margin:10px 14px;padding:8px;background:var(--gray1);border-radius:10px;flex-wrap:wrap}
   .comp-seance-nav .btn{min-width:44px;min-height:40px;padding:8px 12px}
   .comp-code-btn{width:42px;height:42px;font-size:13px;border-radius:10px}
   #comp-content .tbl td.xc,#comp-content .tbl th{padding:6px 3px}
 }
 .comp-cards-view{display:none}
-@media(max-width:720px){
-  .comp-mode-cards .comp-cards-view{display:block}
-  .comp-mode-cards .tbl-wrap{display:none}
-}
+.comp-mode-cards .comp-cards-view{display:block}
+.comp-mode-cards .tbl-wrap{display:none}
 .comp-card-grp-hdr{padding:8px 14px;font-size:12px;font-weight:700;background:var(--gray1);margin-top:12px}
 .comp-stud-card{background:#fff;border:1px solid var(--gray3);border-radius:12px;padding:10px 12px;margin:8px 14px}
 .comp-stud-card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px}
@@ -422,16 +419,13 @@ tr.grp-bg-Garcons>.frz{background:#eff6ff}
 .comp-stud-note{font-weight:800;color:var(--g5);font-size:14px;white-space:nowrap}
 .comp-stud-card-btns{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
 .comp-card-btn{min-height:44px;border-radius:10px;border:2px solid;font-weight:900;font-size:13px;background:#fafafa;cursor:pointer}
-.qual-group-nav{display:none}
+.qual-group-nav{display:flex;align-items:center;justify-content:center;gap:10px;margin:10px 0;padding:8px;background:var(--gray1);border-radius:10px;flex-wrap:wrap}
 @media(max-width:720px){
-  .qual-group-nav{display:flex;align-items:center;justify-content:center;gap:10px;margin:10px 0;padding:8px;background:var(--gray1);border-radius:10px;flex-wrap:wrap}
   .qual-group-nav .btn{min-width:44px;min-height:40px;padding:8px 10px}
 }
 .qual-cards-view{display:none}
-@media(max-width:720px){
-  .qual-mode-cards .qual-cards-view{display:block}
-  .qual-mode-cards .tbl-wrap{display:none}
-}
+.qual-mode-cards .qual-cards-view{display:block}
+.qual-mode-cards .tbl-wrap{display:none}
 .qual-stud-card{background:#fff;border:1px solid var(--gray3);border-radius:12px;padding:10px 12px;margin:8px 0}
 .qual-stud-card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:8px}
 .qual-stud-name{font-weight:700;font-size:14px}
@@ -3793,12 +3787,11 @@ function compToggleMode(clsId){
   compApplyMobileView(clsId);
 }
 function compApplyMobileView(clsId){
-  const mobile = window.matchMedia('(max-width:720px)').matches;
   const sel = compGetSel(clsId);
-  const isCards = mobile && compGetMode(clsId)==='cards';
+  const isCards = compGetMode(clsId)==='cards';
   const lbl=document.getElementById('comp-seance-num'); if(lbl) lbl.textContent=sel;
   document.querySelectorAll('#comp-content [data-sn]').forEach(el=>{
-    if(!isCards){ el.style.display=''; return; } // mode tableau (ou PC) : toutes les séances visibles
+    if(!isCards){ el.style.display=''; return; } // mode tableau : toutes les séances visibles
     el.style.display = (+el.getAttribute('data-sn')===sel) ? '' : 'none';
   });
   const root=document.getElementById('comp-card-root');
@@ -3960,9 +3953,8 @@ function concToggleMode(clsId){
   concApplyMobileView(clsId);
 }
 function concApplyMobileView(clsId){
-  const mobile=window.matchMedia('(max-width:720px)').matches;
   const root=document.getElementById('conc-card-root');
-  if(root)root.classList.toggle('comp-mode-cards', mobile && concGetMode(clsId)==='cards');
+  if(root)root.classList.toggle('comp-mode-cards', concGetMode(clsId)==='cards');
   const btn=document.getElementById('conc-mode-btn');
   if(btn)btn.textContent=concGetMode(clsId)==='cards'?'📊 Voir en tableau':'📝 Saisie par carte';
 }
@@ -4152,11 +4144,10 @@ function qualToggleMode(screen,clsId){
   qualApplyMobileView(screen,clsId);
 }
 function qualApplyMobileView(screen,clsId){
-  const mobile=window.matchMedia('(max-width:720px)').matches;
   const sel=qualGroupSel[qualKey(screen,clsId)];
-  const isCards=mobile && qualGetMode(screen,clsId)==='cards';
+  const isCards=qualGetMode(screen,clsId)==='cards';
   document.querySelectorAll(`#${screen}-content [data-grp]`).forEach(el=>{
-    if(!isCards){el.style.display='';return;} // mode tableau (ou PC) : tous les groupes visibles
+    if(!isCards){el.style.display='';return;} // mode tableau : tous les groupes visibles
     el.style.display=(el.getAttribute('data-grp')===sel)?'':'none';
   });
   const root=document.getElementById(`${screen}-qual-root`);
