@@ -1097,6 +1097,7 @@ textarea:focus-visible{
     <button id="install-pwa-btn" class="btn bg sm" onclick="installPWA()" title="Installer l'application" style="display:none;padding:6px 10px;font-size:12px" aria-label="Installer l'application">📲 Installer</button>
     <button class="btn bs sm" onclick="expAll()" title="Exporter les données" style="padding:6px 10px;font-size:12px" aria-label="Exporter les données">⬇️</button>
     <button class="btn bs sm" onclick="document.getElementById(&#39;impF&#39;).click()" title="Importer les données" style="padding:6px 10px;font-size:12px" aria-label="Importer les données">⬆️</button>
+    <button class="btn bs sm" id="btn-force-sync" onclick="if(typeof epsUser!=='undefined' && epsUser){toast('🔄 Synchronisation en cours...');cloudPushAttempt(0);}else{toast('⚠️ Pas connecté au cloud');}" title="Forcer la synchronisation cloud" style="padding:6px 10px;font-size:12px" aria-label="Forcer la synchronisation cloud">🔄</button>
     <input type="file" id="impF" accept=".json" style="display:none" onchange="impAll(this)">
     <div class="otag" id="otag" style="background:var(--gold);color:#111;font-size:10px;font-weight:800;padding:4px 11px;border-radius:20px;letter-spacing:.3px">OFFLINE</div>
   </div>
@@ -3378,24 +3379,35 @@ let _cloudPushTimer = null;
 function cloudPushDebounced(){
   if(!epsUser) return;
   clearTimeout(_cloudPushTimer);
-  _cloudPushTimer = setTimeout(async ()=>{
-    const supa = getSupa(); if(!supa || !epsUser) return;
-    try{
-      const { error } = await supa.from('user_data').upsert({
-        user_id: epsUser.id,
-        data: DB,
-        updated_at: new Date().toISOString()
-      });
-      if(error){
-        console.error('Erreur sync cloud (push):', error);
-        toast('⚠️ Sync cloud échouée : '+(error.message||error.code||'erreur inconnue'));
-      }
-    }catch(e){
-      console.error('Erreur sync cloud (push, exception):', e);
-      toast('⚠️ Sync cloud échouée (exception) : '+(e && e.message ? e.message : String(e)));
-    }
-  }, 1200);
+  _cloudPushTimer = setTimeout(()=>cloudPushAttempt(0), 1200);
 }
+async function cloudPushAttempt(retryCount){
+  const supa = getSupa(); if(!supa || !epsUser) return;
+  const sizeKB = Math.round(new Blob([JSON.stringify(DB)]).size/1024);
+  try{
+    const { error } = await supa.from('user_data').upsert({
+      user_id: epsUser.id,
+      data: DB,
+      updated_at: new Date().toISOString()
+    });
+    if(error){
+      console.error(`Erreur sync cloud (push, taille ~${sizeKB}Ko):`, error);
+      if(retryCount < 2){ setTimeout(()=>cloudPushAttempt(retryCount+1), 4000); }
+      else toast(`⚠️ Sync cloud échouée (~${sizeKB} Ko) : `+(error.message||error.code||'erreur inconnue'));
+    }else if(retryCount>0){
+      toast('✅ Synchronisé avec le cloud');
+    }
+  }catch(e){
+    console.error(`Erreur sync cloud (push, exception, taille ~${sizeKB}Ko):`, e);
+    // "Load failed" et autres erreurs réseau transitoires (connexion faible, appli en
+    // arrière-plan pendant l'envoi) : on retente automatiquement avant d'alerter.
+    if(retryCount < 2){ setTimeout(()=>cloudPushAttempt(retryCount+1), 4000); }
+    else toast(`⚠️ Sync cloud échouée (~${sizeKB} Ko, exception) : `+(e && e.message ? e.message : String(e)));
+  }
+}
+// Dès que la connexion revient (après une coupure), on retente immédiatement
+// de pousser les dernières modifications vers le cloud.
+window.addEventListener('online', ()=>{ if(epsUser) cloudPushAttempt(0); });
 
 function loadDB(){
   const main = tryParseDB(localStorage.getItem('epsdb5'));
