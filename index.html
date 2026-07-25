@@ -3352,6 +3352,7 @@ function tryParseDB(raw){
 async function cloudSyncPullThenBoot(){
   const supa = getSupa();
   if(!supa || !epsUser){ loadDB(); return; }
+  let shouldPushLocal = false;
   try{
     const { data, error } = await supa.from('user_data').select('data, updated_at').eq('user_id', epsUser.id).single();
     if(!error && data && data.data){
@@ -3363,10 +3364,19 @@ async function cloudSyncPullThenBoot(){
       if(!localDB || cloudTime > localTime){
         DB = cloudDB;
         try{ localStorage.setItem('epsdb5', JSON.stringify(DB)); }catch(e){}
+      }else if(localTime > cloudTime){
+        // Cet appareil a des données locales plus récentes que le cloud (ex: modifiées
+        // hors-ligne) : on les repousse tout de suite, sans attendre une prochaine
+        // modification, pour que les autres appareils les voient au plus vite.
+        shouldPushLocal = true;
       }
+    }else{
+      // Aucune ligne cloud encore : on pousse l'état local initial.
+      shouldPushLocal = true;
     }
   }catch(e){ /* pas grave : on continue en local, la synchro réessaiera plus tard */ }
   loadDB();
+  if(shouldPushLocal) cloudPushDebounced();
 }
 
 // Pousse la DB courante vers Supabase (débouncé, appelé depuis _persistDB).
@@ -3444,6 +3454,10 @@ function saveDB(){
 }
 function _persistDB(){
   try{
+    // Horodatage de la sauvegarde locale : indispensable pour que cloudSyncPullThenBoot()
+    // sache comparer correctement "local" vs "cloud" et ne jamais écraser des
+    // modifications locales récentes par une version cloud plus ancienne.
+    DB._localSavedAt = Date.now();
     const serialized = JSON.stringify(DB);
     // Rotation de secours : on ne fait glisser les sauvegardes QUE si l'écriture
     // principale actuelle est elle-même valide, pour ne jamais propager une
