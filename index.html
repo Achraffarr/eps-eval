@@ -1095,7 +1095,7 @@ textarea:focus-visible{
   </div>
   <div class="topbar-actions">
     <button id="install-pwa-btn" class="btn bg sm" onclick="installPWA()" title="Installer l'application" style="display:none;padding:6px 10px;font-size:12px" aria-label="Installer l'application">📲 Installer</button>
-    <button class="btn bs sm" id="btn-force-sync" onclick="if(typeof epsUser!=='undefined' && epsUser){toast('🔄 Synchronisation en cours...');cloudPushAttempt(0);}else{toast('⚠️ Pas connecté au cloud');}" title="Forcer la synchronisation cloud" style="padding:6px 10px;font-size:12px" aria-label="Forcer la synchronisation cloud">🔄</button>
+    <button class="btn bs sm" id="btn-force-sync" onclick="if(typeof epsUser!=='undefined' && epsUser){toast('🔄 Vérification cloud en cours...');cloudCheckForUpdates();}else{toast('⚠️ Pas connecté au cloud');}" title="Forcer la synchronisation cloud" style="padding:6px 10px;font-size:12px" aria-label="Forcer la synchronisation cloud">🔄</button>
     <input type="file" id="impF" accept=".json" style="display:none" onchange="impAll(this)">
     <div class="otag" id="otag" style="background:var(--gold);color:#111;font-size:10px;font-weight:800;padding:4px 11px;border-radius:20px;letter-spacing:.3px">OFFLINE</div>
   </div>
@@ -3406,15 +3406,42 @@ async function cloudPushAttempt(retryCount){
 // Dès que la connexion revient (après une coupure), on retente immédiatement
 // de pousser les dernières modifications vers le cloud.
 window.addEventListener('online', ()=>{ if(epsUser) cloudPushAttempt(0); });
-// Synchro automatique renforcée : en plus du push après chaque modification,
-// on repousse/re-tire aussi quand l'appli redevient active (ex: on rouvre
-// l'onglet après être allé sur une autre appli), et périodiquement en tâche
-// de fond tant que l'appli reste ouverte — pour rattraper toute modification
-// qui n'aurait pas pu partir (réseau coupé au moment de la sauvegarde, etc.).
+
+// Vérifie si le cloud a une version plus récente que l'appareil (ex: modifications
+// faites entre-temps sur un autre appareil) ; si oui, on l'adopte et on recharge la
+// page pour que tout l'écran se remette à jour proprement. Sinon, on pousse nos
+// éventuelles modifications locales plus récentes.
+let _cloudCheckInFlight = false;
+async function cloudCheckForUpdates(){
+  const supa = getSupa();
+  if(!supa || !epsUser || _cloudCheckInFlight) return;
+  _cloudCheckInFlight = true;
+  try{
+    const { data, error } = await supa.from('user_data').select('data, updated_at').eq('user_id', epsUser.id).single();
+    if(!error && data && data.data){
+      const localDB = tryParseDB(localStorage.getItem('epsdb5'));
+      const localTime = localDB && localDB._localSavedAt ? localDB._localSavedAt : 0;
+      const cloudTime = data.updated_at ? new Date(data.updated_at).getTime() : 0;
+      if(cloudTime > localTime + 1500){ // marge pour éviter les faux positifs d'horloge
+        try{ localStorage.setItem('epsdb5', JSON.stringify(data.data)); }catch(e){}
+        toast('🔄 Nouvelles données trouvées sur le cloud — actualisation...');
+        setTimeout(()=>location.reload(), 700);
+        return;
+      }
+    }
+    // Le cloud n'est pas plus récent (ou pas de ligne) : on pousse nos éventuelles
+    // modifications locales pas encore synchronisées.
+    cloudPushAttempt(0);
+  }catch(e){
+    console.error('Erreur vérification cloud:', e);
+  }finally{
+    _cloudCheckInFlight = false;
+  }
+}
 document.addEventListener('visibilitychange', ()=>{
-  if(document.visibilityState==='visible' && epsUser){ cloudPushAttempt(0); }
+  if(document.visibilityState==='visible' && epsUser){ cloudCheckForUpdates(); }
 });
-window.addEventListener('focus', ()=>{ if(epsUser) cloudPushAttempt(0); });
+window.addEventListener('focus', ()=>{ if(epsUser) cloudCheckForUpdates(); });
 setInterval(()=>{ if(epsUser && document.visibilityState==='visible') cloudPushAttempt(0); }, 60000);
 
 function loadDB(){
