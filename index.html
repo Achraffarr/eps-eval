@@ -1095,8 +1095,6 @@ textarea:focus-visible{
   </div>
   <div class="topbar-actions">
     <button id="install-pwa-btn" class="btn bg sm" onclick="installPWA()" title="Installer l'application" style="display:none;padding:6px 10px;font-size:12px" aria-label="Installer l'application">📲 Installer</button>
-    <button class="btn bs sm" onclick="expAll()" title="Exporter les données" style="padding:6px 10px;font-size:12px" aria-label="Exporter les données">⬇️</button>
-    <button class="btn bs sm" onclick="document.getElementById(&#39;impF&#39;).click()" title="Importer les données" style="padding:6px 10px;font-size:12px" aria-label="Importer les données">⬆️</button>
     <button class="btn bs sm" id="btn-force-sync" onclick="if(typeof epsUser!=='undefined' && epsUser){toast('🔄 Synchronisation en cours...');cloudPushAttempt(0);}else{toast('⚠️ Pas connecté au cloud');}" title="Forcer la synchronisation cloud" style="padding:6px 10px;font-size:12px" aria-label="Forcer la synchronisation cloud">🔄</button>
     <input type="file" id="impF" accept=".json" style="display:none" onchange="impAll(this)">
     <div class="otag" id="otag" style="background:var(--gold);color:#111;font-size:10px;font-weight:800;padding:4px 11px;border-radius:20px;letter-spacing:.3px">OFFLINE</div>
