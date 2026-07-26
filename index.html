@@ -3370,7 +3370,7 @@ async function cloudSyncPullThenBoot(){
   }catch(e){ /* pas grave : on continue en local, la synchro réessaiera plus tard */ }
   loadDB();
   if(shouldPushLocal) cloudPushDebounced();
-  startRealtimeSync();
+  // Synchro temps réel désactivée : seul le bouton 🔄 déclenche une synchro.
 }
 
 // Écoute en direct (WebSocket) les changements sur la ligne cloud de cet utilisateur :
@@ -3437,9 +3437,8 @@ async function cloudPushAttempt(retryCount){
     return {ok:false, reason: e && e.message ? e.message : String(e)};
   }
 }
-// Dès que la connexion revient (après une coupure), on retente immédiatement
-// de pousser les dernières modifications vers le cloud.
-window.addEventListener('online', ()=>{ if(epsUser) cloudPushAttempt(0); });
+// Synchro désactivée automatiquement : seul le bouton 🔄 déclenche une synchro
+// (envoi + vérification), sur demande explicite de l'utilisateur.
 
 // Vérifie si le cloud a une version plus récente que l'appareil (ex: modifications
 // faites entre-temps sur un autre appareil) ; si oui, on l'adopte et on recharge la
@@ -3494,11 +3493,7 @@ async function cloudCheckForUpdates(manual){
     _cloudCheckInFlight = false;
   }
 }
-document.addEventListener('visibilitychange', ()=>{
-  if(document.visibilityState==='visible' && epsUser){ cloudCheckForUpdates(false); }
-});
-window.addEventListener('focus', ()=>{ if(epsUser) cloudCheckForUpdates(false); });
-setInterval(()=>{ if(epsUser && document.visibilityState==='visible') cloudCheckForUpdates(false); }, 20000);
+
 
 function loadDB(){
   const main = tryParseDB(localStorage.getItem('epsdb5'));
@@ -3574,7 +3569,7 @@ function _persistDB(){
       }catch(e){/* quota plein sur les sauvegardes : pas bloquant pour l'écriture principale */}
     }
     localStorage.setItem('epsdb5', serialized);
-    cloudPushDebounced();
+    // Synchro cloud désactivée automatiquement : utilisez le bouton 🔄 pour envoyer/recevoir.
   }catch(e){
     toast('⚠️ Erreur de sauvegarde locale — pensez à exporter vos données');
   }
