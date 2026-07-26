@@ -3467,7 +3467,7 @@ document.addEventListener('visibilitychange', ()=>{
   if(document.visibilityState==='visible' && epsUser){ cloudCheckForUpdates(false); }
 });
 window.addEventListener('focus', ()=>{ if(epsUser) cloudCheckForUpdates(false); });
-setInterval(()=>{ if(epsUser && document.visibilityState==='visible') cloudPushAttempt(0); }, 20000);
+setInterval(()=>{ if(epsUser && document.visibilityState==='visible') cloudCheckForUpdates(false); }, 20000);
 
 function loadDB(){
   const main = tryParseDB(localStorage.getItem('epsdb5'));
