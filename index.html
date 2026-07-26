@@ -3370,6 +3370,37 @@ async function cloudSyncPullThenBoot(){
   }catch(e){ /* pas grave : on continue en local, la synchro réessaiera plus tard */ }
   loadDB();
   if(shouldPushLocal) cloudPushDebounced();
+  startRealtimeSync();
+}
+
+// Écoute en direct (WebSocket) les changements sur la ligne cloud de cet utilisateur :
+// dès qu'un autre appareil pousse une modification, celui-ci la reçoit en quelques
+// secondes au lieu d'attendre la prochaine vérification périodique.
+let _realtimeChannel = null;
+function startRealtimeSync(){
+  const supa = getSupa();
+  if(!supa || !epsUser || _realtimeChannel) return;
+  try{
+    _realtimeChannel = supa
+      .channel('user_data_changes_'+epsUser.id)
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'user_data', filter: `user_id=eq.${epsUser.id}`
+      }, (payload)=>{
+        const row = payload.new;
+        if(!row || !row.data) return;
+        const localDB = tryParseDB(localStorage.getItem('epsdb5'));
+        const localTime = localDB && localDB._localSavedAt ? localDB._localSavedAt : 0;
+        const cloudTime = row.updated_at ? new Date(row.updated_at).getTime() : 0;
+        // Marge pour ignorer l'écho de notre propre écriture (l'appareil qui vient de
+        // pousser reçoit aussi cet événement, mais son local est déjà à jour).
+        if(cloudTime > localTime + 1500){
+          try{ localStorage.setItem('epsdb5', JSON.stringify(row.data)); }catch(e){}
+          toast('🔄 Mise à jour reçue d\'un autre appareil — actualisation...');
+          setTimeout(()=>location.reload(), 600);
+        }
+      })
+      .subscribe();
+  }catch(e){ console.error('Erreur abonnement realtime:', e); }
 }
 
 // Pousse la DB courante vers Supabase (débouncé, appelé depuis _persistDB).
