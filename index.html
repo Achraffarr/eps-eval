@@ -3390,7 +3390,7 @@ async function cloudPushAttempt(retryCount){
     });
     if(error){
       console.error(`Erreur sync cloud (push, taille ~${sizeKB}Ko):`, error);
-      if(retryCount < 2){ setTimeout(()=>cloudPushAttempt(retryCount+1), 4000); }
+      if(retryCount < 5){ setTimeout(()=>cloudPushAttempt(retryCount+1), Math.min(4000*(retryCount+1),15000)); }
       else toast(`⚠️ Sync cloud échouée (~${sizeKB} Ko) : `+(error.message||error.code||'erreur inconnue'));
       return {ok:false, reason:error.message||error.code};
     }else{
@@ -3401,7 +3401,7 @@ async function cloudPushAttempt(retryCount){
     console.error(`Erreur sync cloud (push, exception, taille ~${sizeKB}Ko):`, e);
     // "Load failed" et autres erreurs réseau transitoires (connexion faible, appli en
     // arrière-plan pendant l'envoi) : on retente automatiquement avant d'alerter.
-    if(retryCount < 2){ setTimeout(()=>cloudPushAttempt(retryCount+1), 4000); }
+    if(retryCount < 5){ setTimeout(()=>cloudPushAttempt(retryCount+1), Math.min(4000*(retryCount+1),15000)); }
     else toast(`⚠️ Sync cloud échouée (~${sizeKB} Ko, exception) : `+(e && e.message ? e.message : String(e)));
     return {ok:false, reason: e && e.message ? e.message : String(e)};
   }
@@ -3467,7 +3467,7 @@ document.addEventListener('visibilitychange', ()=>{
   if(document.visibilityState==='visible' && epsUser){ cloudCheckForUpdates(false); }
 });
 window.addEventListener('focus', ()=>{ if(epsUser) cloudCheckForUpdates(false); });
-setInterval(()=>{ if(epsUser && document.visibilityState==='visible') cloudPushAttempt(0); }, 60000);
+setInterval(()=>{ if(epsUser && document.visibilityState==='visible') cloudPushAttempt(0); }, 20000);
 
 function loadDB(){
   const main = tryParseDB(localStorage.getItem('epsdb5'));
