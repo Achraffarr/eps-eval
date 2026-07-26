@@ -2418,8 +2418,8 @@ function renderObsCDD(cls,ci){
   let html=`<div class="brow">
     <button class="btn bs sm" onclick="openCDD()">🎯 Critères (${getCDDKey(cls,ci).length}/${getCDDMax(cls,ci)})</button>
     <button class="btn bg sm" onclick="printGrid('obs')">🖨️ Imprimer / PDF</button>
+    <button class="btn bg sm" onclick="confirmRemplirObs()">⚡ Remplir l'observation</button>
   </div>`;
-  html+=autoToolPanel('1','⚡ Remplissage auto de l\'observation','Coche les cases et remplit le temps/performance de chaque élève selon son assiduité aux 2 premières séances du cycle.','confirmRemplirObs()','Remplir l\'observation');
   html+=`<div class="card"><div class="sec-title">Tableau Individuel — Observation <span class="ctag">${cls.name}</span></div>
   <div class="tbl-wrap"><table class="tbl"><thead>
     <tr>
@@ -2874,8 +2874,8 @@ function renderObsPerf(cls,ci,apsId){
   let html=`<div class="brow">
     ${hasPool?`<button class="btn bs sm" onclick="openPerfCrit('${apsId}')">🎯 Critères (${getPerfKey(cls,ci,apsId).length}/${getPerfMax(cls,ci)})</button>`:''}
     <button class="btn bg sm" onclick="printGrid('obs')">🖨️ Imprimer / PDF</button>
+    <button class="btn bg sm" onclick="confirmRemplirObs()">⚡ Remplir l'observation</button>
   </div>`;
-  html+=autoToolPanel('1','⚡ Remplissage auto de l\'observation','Coche les cases et remplit le temps/performance de chaque élève selon son assiduité aux 2 premières séances du cycle.','confirmRemplirObs()','Remplir l\'observation');
   html+=`<div class="card"><div class="sec-title">Tableau Individuel — Observation <span class="ctag">${cls.name}</span></div>
   <div class="tbl-wrap"><table class="tbl"><thead>
     <tr>
