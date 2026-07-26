@@ -2,7 +2,7 @@
 // Toutes les données (élèves, notes, groupes) restent en localStorage sur l'appareil ;
 // ce cache ne concerne que le "code" de l'appli (HTML/CSS/JS/icônes).
 
-const CACHE_NAME = 'eps-eval-cache-v12'; // ⚠️ change ce numéro (v2, v3...) à chaque mise à jour de l'appli
+const CACHE_NAME = 'eps-eval-cache-v13'; // ⚠️ change ce numéro (v2, v3...) à chaque mise à jour de l'appli
 const FILES_TO_CACHE = [
   './index.html',
   './manifest.json',
