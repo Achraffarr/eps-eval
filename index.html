@@ -1095,7 +1095,7 @@ textarea:focus-visible{
   </div>
   <div class="topbar-actions">
     <button id="install-pwa-btn" class="btn bg sm" onclick="installPWA()" title="Installer l'application" style="display:none;padding:6px 10px;font-size:12px" aria-label="Installer l'application">📲 Installer</button>
-    <button class="btn bs sm" id="btn-force-sync" onclick="if(typeof epsUser!=='undefined' && epsUser){toast('🔄 Vérification cloud en cours...');cloudCheckForUpdates();}else{toast('⚠️ Pas connecté au cloud');}" title="Forcer la synchronisation cloud" style="padding:6px 10px;font-size:12px" aria-label="Forcer la synchronisation cloud">🔄</button>
+    <button class="btn bs sm" id="btn-force-sync" onclick="toast('🔄 Vérification cloud en cours...');cloudCheckForUpdates(true);" title="Forcer la synchronisation cloud" style="padding:6px 10px;font-size:12px" aria-label="Forcer la synchronisation cloud">🔄</button>
     <input type="file" id="impF" accept=".json" style="display:none" onchange="impAll(this)">
     <div class="otag" id="otag" style="background:var(--gold);color:#111;font-size:10px;font-weight:800;padding:4px 11px;border-radius:20px;letter-spacing:.3px">OFFLINE</div>
   </div>
@@ -3412,12 +3412,22 @@ window.addEventListener('online', ()=>{ if(epsUser) cloudPushAttempt(0); });
 // page pour que tout l'écran se remette à jour proprement. Sinon, on pousse nos
 // éventuelles modifications locales plus récentes.
 let _cloudCheckInFlight = false;
-async function cloudCheckForUpdates(){
+function _withTimeout(promise, ms){
+  return Promise.race([
+    promise,
+    new Promise((_,rej)=>setTimeout(()=>rej(new Error('Délai dépassé (10s)')), ms))
+  ]);
+}
+async function cloudCheckForUpdates(manual){
   const supa = getSupa();
-  if(!supa || !epsUser || _cloudCheckInFlight) return;
+  if(!supa || !epsUser){ if(manual) toast('⚠️ Pas connecté au cloud'); return; }
+  if(_cloudCheckInFlight){ if(manual) toast('⏳ Une vérification est déjà en cours, patientez...'); return; }
   _cloudCheckInFlight = true;
   try{
-    const { data, error } = await supa.from('user_data').select('data, updated_at').eq('user_id', epsUser.id).single();
+    const { data, error } = await _withTimeout(
+      supa.from('user_data').select('data, updated_at').eq('user_id', epsUser.id).single(),
+      10000
+    );
     if(!error && data && data.data){
       const localDB = tryParseDB(localStorage.getItem('epsdb5'));
       const localTime = localDB && localDB._localSavedAt ? localDB._localSavedAt : 0;
@@ -3428,20 +3438,26 @@ async function cloudCheckForUpdates(){
         setTimeout(()=>location.reload(), 700);
         return;
       }
+      if(manual) toast('✅ Déjà à jour');
+    }else if(error && error.code!=='PGRST116'){ // PGRST116 = aucune ligne encore (normal au tout début)
+      console.error('Erreur vérification cloud:', error);
+      toast('⚠️ Vérification cloud échouée : '+(error.message||error.code||'erreur inconnue'));
+      return;
     }
     // Le cloud n'est pas plus récent (ou pas de ligne) : on pousse nos éventuelles
     // modifications locales pas encore synchronisées.
-    cloudPushAttempt(0);
+    await cloudPushAttempt(0);
   }catch(e){
-    console.error('Erreur vérification cloud:', e);
+    console.error('Erreur vérification cloud (exception):', e);
+    toast('⚠️ Vérification cloud échouée : '+(e && e.message ? e.message : String(e)));
   }finally{
     _cloudCheckInFlight = false;
   }
 }
 document.addEventListener('visibilitychange', ()=>{
-  if(document.visibilityState==='visible' && epsUser){ cloudCheckForUpdates(); }
+  if(document.visibilityState==='visible' && epsUser){ cloudCheckForUpdates(false); }
 });
-window.addEventListener('focus', ()=>{ if(epsUser) cloudCheckForUpdates(); });
+window.addEventListener('focus', ()=>{ if(epsUser) cloudCheckForUpdates(false); });
 setInterval(()=>{ if(epsUser && document.visibilityState==='visible') cloudPushAttempt(0); }, 60000);
 
 function loadDB(){
