@@ -1914,8 +1914,20 @@ async function authSignIn(){
   const email = document.getElementById('auth-login-email').value.trim();
   const pass = document.getElementById('auth-login-pass').value;
   if(!email || !pass){ authMsg('E-mail et mot de passe requis.', true); return; }
+  if(!navigator.onLine){
+    authMsg('Pas de connexion internet. La connexion nécessite internet la première fois sur cet appareil ; ensuite l\'appli fonctionnera hors-ligne automatiquement.', true);
+    return;
+  }
   authSetLoading(true);
-  const { error } = await supa.auth.signInWithPassword({ email, password: pass });
+  let error;
+  try{
+    const res = await _withTimeout(supa.auth.signInWithPassword({ email, password: pass }), 12000);
+    error = res.error;
+  }catch(e){
+    authSetLoading(false); authShowLogin();
+    authMsg('Connexion impossible (réseau instable). Réessayez.', true);
+    return;
+  }
   if(error){ authSetLoading(false); authShowLogin(); authMsg(error.message, true); return; }
   await authBoot();
 }
@@ -2042,14 +2054,39 @@ async function authBoot(){
     return;
   }
   authSetLoading(true);
-  const { data:{ session } } = await supa.auth.getSession();
+  let session = null;
+  try{
+    // Garde-fou : si le réseau est absent, getSession() peut rester bloqué en
+    // essayant de rafraîchir le token. On ne l'attend jamais plus de 5s.
+    const result = await _withTimeout(supa.auth.getSession(), 5000);
+    session = result && result.data ? result.data.session : null;
+  }catch(e){ session = null; }
+
   if(!session){
+    // Pas de session récupérée : soit jamais connecté sur cet appareil, soit
+    // hors-ligne et impossible de vérifier le serveur. Si on a déjà été connecté
+    // ici avant (identifiant en cache) et qu'on est hors-ligne, on démarre quand
+    // même en local plutôt que de bloquer l'utilisateur.
+    const cachedUserId = localStorage.getItem('eps_last_user_id');
+    if(cachedUserId && !navigator.onLine){
+      epsUser = { id: cachedUserId };
+      authSetLoading(false);
+      document.getElementById('auth-gate').style.display='none';
+      toast('📴 Hors-ligne : utilisation des données locales. Synchro automatique au retour du réseau.');
+      loadDB();
+      _armSyncOnReconnect();
+      return;
+    }
     authSetLoading(false);
     document.getElementById('auth-gate').style.display='flex';
+    if(!navigator.onLine){
+      authMsg('Pas de connexion internet. La toute première connexion sur cet appareil nécessite internet.', true);
+    }
     authShowLogin();
     return;
   }
   epsUser = session.user;
+  try{ localStorage.setItem('eps_last_user_id', epsUser.id); }catch(e){}
 
   // MODE PERSO SIMPLE (sans paywall/abonnement/limite d'appareils) :
   // pas de table "profiles", pas de trigger serveur, pas de RPC anti-partage.
@@ -2058,6 +2095,22 @@ async function authBoot(){
   authSetLoading(false);
   document.getElementById('auth-gate').style.display='none';
   cloudSyncPullThenBoot();
+  _armSyncOnReconnect();
+}
+
+// Dès que la connexion internet revient (après avoir travaillé hors-ligne), on
+// synchronise automatiquement une seule fois — ni vérification permanente, ni
+// action requise de l'utilisateur.
+let _reconnectSyncArmed = false;
+function _armSyncOnReconnect(){
+  if(_reconnectSyncArmed) return;
+  _reconnectSyncArmed = true;
+  window.addEventListener('online', ()=>{
+    if(epsUser){
+      toast('🌐 Connexion internet retrouvée — synchronisation...');
+      cloudCheckForUpdates(false);
+    }
+  });
 }
 
 function authShowDeviceLimit(){
