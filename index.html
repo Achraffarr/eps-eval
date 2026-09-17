@@ -37577,8 +37577,16 @@ if (typeof renderVmaSaisie === 'function') {
 // ===== Enregistrement du Service Worker (mise à jour automatique et silencieuse) =====
 (function () {
   if (!('serviceWorker' in navigator)) return;
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (refreshing) return;
+    refreshing = true;
+    window.location.reload();
+  });
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch((err) => {
+    navigator.serviceWorker.register('./sw.js').then((reg) => {
+      reg.update().catch(() => {});
+    }).catch((err) => {
       console.warn('SW registration failed:', err);
     });
   });
